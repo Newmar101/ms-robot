@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .AppName }} 设备控制平台</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/xterm.css">
+    <script>
+    window.__MR_DEBUG_MODE__ = "{{ if .DebugMode }}true{{ else }}false{{ end }}" === "true";
+    </script>
+    <!-- 手机调试：需服务端 --debug，且地址 ?debug=1；脚本为本地 /static/js/vconsole.min.js -->
+    <script>
+    (function () {
+        try {
+            if (!window.__MR_DEBUG_MODE__) return;
+            if (new URLSearchParams(window.location.search).get('debug') !== '1') return;
+        } catch (e) { return; }
+        var s = document.createElement('script');
+        s.src = '/static/js/vconsole.min.js';
+        s.onload = function () {
+            if (typeof VConsole !== 'undefined') new VConsole({ theme: 'dark' });
+        };
+        s.onerror = function () {
+            console.error('vConsole 加载失败，请确认 static/js/vconsole.min.js 存在');
+        };
+        document.head.appendChild(s);
+    })();
+    </script>
+</head>
+<body>
+    <div class="container">
+        <main>
+            <!-- 设备控制台 -->
+            <div id="devices-page" class="page active">
+                <div class="device-controls-header">
+                    <div class="device-controls-header-top">
+                    <h2>📱 设备控制平台</h2>
+                    <div class="header-actions">
+                        <label class="header-checkbox-btn sync-operation-btn" title="勾选后操作将同步到选中的设备，可取消勾选">
+                            <input type="checkbox" id="sync-operation-cb" class="header-checkbox-btn-input"> 同步操作
+                        </label>
+                        <div class="batch-operations-dropdown">
+                            <button id="batch-operations-btn" class="batch-operations-btn" title="批量操作">
+                                <span class="batch-operations-icon">⚙️</span>
+                                <span class="batch-operations-text">批量操作</span>
+                                <span class="dropdown-arrow">▼</span>
+                            </button>
+                            <div id="batch-operations-menu" class="batch-operations-menu hidden">
+                                <button class="batch-menu-item" id="batch-connect-btn">
+                                    <span class="batch-menu-icon">🔗</span>
+                                    <span class="batch-menu-text">连接屏幕</span>
+                                </button>
+                                <button class="batch-menu-item" id="batch-disconnect-btn">
+                                    <span class="batch-menu-icon">⛓️‍💥</span>
+                                    <span class="batch-menu-text">断开屏幕</span>
+                                </button>
+                            </div>
+                        </div>
+                        <button id="file-manager-btn" class="file-manager-btn" title="文件管理">
+                            <span class="file-manager-icon">📁</span>
+                            <span class="file-manager-text">文件管理</span>
+                        </button>
+                </div>
+                    </div>
+                    <div class="devices-container-bar">
+                        <div id="device-status-displays-bar" class="device-status-displays-bar"></div>
+                        <!-- 全局选中由 JS 从 tpl-section-select-all 克隆并插入 -->
+                        <button type="button" id="devices-toggle-sections-btn" class="devices-bar-btn" title="收起全部">
+                            <span class="toggle-sections-icon toggle-sections-icon-collapse"><svg viewBox="0 0 12 8" width="14" height="10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 2l5 4 5-4"/></svg></span>
+                            <span class="toggle-sections-icon toggle-sections-icon-expand" style="display:none"><svg viewBox="0 0 12 8" width="14" height="10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1 6l5-4 5 4"/></svg></span>
+                        </button>
+                        <button type="button" id="devices-view-mode-btn" class="devices-bar-btn" title="切换为单栏">
+                            <span class="view-mode-icon view-mode-icon-single" title="切换为单栏"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+                            <span class="view-mode-icon view-mode-icon-sections" style="display:none" title="切换为分栏"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span>
+                        </button>
+                    </div>
+                </div>
+                <div class="devices-page-content">
+                    <div class="devices-container">
+                        <template id="tpl-section-select-all">
+                            <label class="section-select-all" title="选中本栏">
+                                <input type="checkbox" class="section-select-all-checkbox">
+                                <span class="section-select-all-text">选中</span>
+                            </label>
+                        </template>
+                        <template id="tpl-device-select-modal">
+                            <div class="device-select-content">
+                                <div class="device-select-header">
+                                    <h3 style="margin: 0;"></h3>
+                                    <button class="close-btn" type="button">×</button>
+                                </div>
+                                <div class="device-select-body"></div>
+                            </div>
+                        </template>
+                        <div id="devices-list-sections" class="devices-list-sections"></div>
+                    </div>
+                </div>
+
+                <!-- 浮动面板容器（右侧，自动挤压布局） -->
+                <div class="panels-container">
+                    <!-- 浮动文件管理面板（显示在右边） -->
+                    <div id="file-manager-panel" class="file-manager-panel hidden">
+                        <div class="file-manager-header">
+                            <h3>📁 文件管理</h3>
+                            <button id="close-file-manager-btn" class="close-btn" title="关闭">×</button>
+                        </div>
+                        <div class="file-manager-content">
+                            <div class="file-upload-area" id="file-upload-area">
+                                <div class="upload-icon">📤</div>
+                                <div class="upload-text">拖拽文件到此处上传<br>或点击选择文件</div>
+                                <input type="file" id="file-input" multiple style="display: none;">
+                            </div>
+                            <div class="file-list-container">
+                                <div class="file-list-header">
+                                    <div class="file-list-title">
+                                        <input type="checkbox" id="select-all-files" class="select-all-checkbox">
+                                        <label for="select-all-files" style="margin-left: 8px; cursor: pointer;">文件列表</label>
+                                    </div>
+                                    <div class="file-list-actions">
+                                        <button id="batch-push-btn" class="batch-btn" disabled>发送</button>
+                                        <button id="batch-install-btn" class="batch-btn" disabled>安装</button>
+                                        <button id="batch-delete-btn" class="batch-btn batch-delete-btn" disabled>删除</button>
+                                    </div>
+                                </div>
+                                <div id="file-list" class="file-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Shell 多窗口容器：与 focus-mode 同级，z-index 高于全屏以便全屏时终端可操作 -->
+    <div id="shell-windows-container" class="shell-windows-container"></div>
+
+    <!-- 全屏放大模式 -->
+    <div id="focus-mode" class="focus-mode" tabindex="-1">
+        <div class="focus-header">
+            <h3 id="focus-device-name">设备名称</h3>
+            <button id="exit-focus-mode" class="btn" title="退出全屏">✕</button>
+        </div>
+        <div class="focus-video-container">
+            <div class="focus-video-wrapper" id="focus-video-wrapper"></div>
+        </div>
+        <div class="focus-controls" id="focus-controls"></div>
+    </div>
+
+    <script src="/static/js/spark-md5.min.js"></script>
+    <script src="/static/js/xterm.js"></script>
+    <script src="/static/js/control.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/files.js"></script>
+</body>
+</html>
+
