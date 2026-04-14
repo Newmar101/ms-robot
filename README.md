@@ -1,6 +1,6 @@
 # Ms-Robot
 
-在 **浏览器** 里远程批量管理安卓手机。
+在 **浏览器** 里远程批量管理连接到ADB设备上的安卓手机，线控很稳定，远程很方便。
 
 ---
 
@@ -8,11 +8,11 @@
 
 多设备控制台与文件管理（上传、批量推送 / 安装 APK 等）：
 
-多设备控制台与文件管理
+![多设备控制台与文件管理](./docs/assets/1.png)
 
 单路投全屏与控制示例：
 
-单设备投屏与控制
+![单设备投屏与控制](./docs/assets/2.png)
 
 ---
 
@@ -23,7 +23,7 @@
 | --------------- | --------------------------------------------------------------------------- |
 | **浏览器远控界面**     | 在 **电脑浏览器** 里完成投屏、触控、文件，进阶还有命令行（Shell）。                                     |
 | **手机 0 安装 App** | 系统干净安全，不占用空间。                                                               |
-| **多平台适配**       | 支持Windows，Linux，Mac运行,单文件部署，超低性能消耗。                                         |
+| **多平台适配**       | 支持Windows，Linux，Mac运行,单文件部署，Docker命令部署，超低性能消耗。                                         |
 | **多会话协同**       | 可同时查看，控制，同步广播多台设备， 多用户可同时操控。                                                |
 | **多 ADB 端点**    | 完全基于Adb协议，支持本机 `adb`、远程 `adb` 主机、可选 SOCKS5 代理与断线重试，方便对接机房或家里的 `adb server`。 |
 
@@ -43,73 +43,60 @@
 
 ---
 
-## 通过Go安装
+## 通过Go安装直接运行（通用，需要装adb）
 
 ```bash
-go install github.com/ms-robots/ms-robot@latest
+go install github.com/ms-robots/ms-robot@latest # 安装
+
+adb server # 启动adb
+ms-robot
 ```
 
-## 手动构建运行
+## Linux Docker 环境下一键构建运行（适用低性能设备，比如树莓派等小主机）
 
-### 支持多平台多架构
+需安装Docker， 需root权限，或者docker组账户，不用另外装adb。复制运行
 
-- **产物路径**：`dist/ms-robot-<GOOS>-<GOARCH>.exe`（`<GOOS>`、`<GOARCH>` 取自执行 `make` 时的 `go env`；当前 Makefile 对**所有**目标平台都使用 `.exe` 后缀，若需无后缀可执行文件可自行改名复制）。  
-- **多平台 / 多架构**：交叉编译时先设定 `GOOS`、`GOARCH`，再执行 **同一套** `make build`；每种组合各打一次，就会在 `dist/` 里得到对应文件名。本机支持哪些组合可用 `go tool dist list` 查看。
-
-```bash
-# Linux x86_64
-GOOS=linux GOARCH=amd64 make
-
-# Windows x86_64
-GOOS=windows GOARCH=amd64 make
-
-# macOS Apple Silicon
-GOOS=darwin GOARCH=arm64 make
-
-# macOS Intel
-GOOS=darwin GOARCH=amd64 make
-```
-
-PowerShell 示例（与 Bash 等价）：
-
-```powershell
-$env:GOOS = "linux"; $env:GOARCH = "amd64"; make
-```
-
-### Docker 运行adb+ms-robot（适用树莓派等小主机）
-
-首先自行构建好对应平台对应架构的`ms-robot.exe`, 上传到设备里
+### 构建+运行
 
 ```shell
-ls -lah ms-robot.exe # 文件已经上传好了
+# 构建
+export DOCKERFILE='
+ARG BUILD_IMAGE="golang:alpine"
+ARG RUNTIME_IMAGE="backplane/adb:latest"
 
-docker run -d --name ms-robot --restart always \
+FROM ${BUILD_IMAGE} AS builder
+ARG GOPROXY="https://goproxy.cn,https://goproxy.io,direct"
+ARG GO_INSTALL_TARGET="github.com/ms-robots/ms-robot@latest"
+RUN export GOPROXY=${GOPROXY} GO111MODULE=on CGO_ENABLED=0 GOOS=linux; \
+  go install ${GO_INSTALL_TARGET};
+
+FROM ${RUNTIME_IMAGE} AS runner
+COPY --from=builder /go/bin/* /usr/local/bin/
+'
+
+printf "$DOCKERFILE" | docker build -f - . -t ms-robot:latest
+
+# 运行
+mkdir ms-robot; cd ms-robot
+docker run -d --name ms-robot --restart unless-stopped \
    --privileged --net host \
    -v /dev/bus/usb:/dev/bus/usb \
    -v $PWD/.android:/root/.android \
-   -v $PWD:/app -w /app --entrypoint sh \
-   backplane/adb -c "adb server; ./ms-robot.exe"
+   -v $PWD:/app -w /app --entrypoint bash \
+   ms-robot:latest -c "adb server; ms-robot"
 ```
 
-直接运行，adb签名文件在`$PWD/.android`
-
-### Windows,Mac
-
-先启动一下adb
+### 启停控制
 
 ```shell
-adb server
-```
-
-然后启动ms-robot
-
-```shell
-./ms-robot.exe
+docker stop ms-robot # 停止
+docker start ms-robot # 启动
+docker rm -f ms-robot # 删除容器。 可以执行上面的docker run重新创建容器
 ```
 
 ### 启动后
 
-默认浏览器访问：`**http://127.0.0.1:20605**`（可用 `-http-listen` 修改）。
+默认浏览器访问：[http://127.0.0.1:20605](http://127.0.0.1:20605)（可用 `-http-listen` 修改）。
 
 ### 环境变量
 
@@ -149,6 +136,66 @@ retry=-1,name=本机,adb=localhost
 - `**name**`：在 Web 上显示的端点备注。  
 - `**proxy**`：可选，SOCKS5 代理 URL。adb连接能经过sock5，适用于单端口转发场景  
 - `**retry**`：断线重试策略；`0` 表示不重试并可触发移除逻辑；`-1` 表示一直重试。
+
+---
+
+## 下载源码手动构建运行
+
+### 支持多平台多架构
+
+- **产物路径**：`dist/ms-robot-<GOOS>-<GOARCH>.exe`（`<GOOS>`、`<GOARCH>` 取自执行 `make` 时的 `go env`；当前 Makefile 对**所有**目标平台都使用 `.exe` 后缀，若需无后缀可执行文件可自行改名复制）。  
+- **多平台 / 多架构**：交叉编译时先设定 `GOOS`、`GOARCH`，再执行 **同一套** `make build`；每种组合各打一次，就会在 `dist/` 里得到对应文件名。本机支持哪些组合可用 `go tool dist list` 查看。
+
+```bash
+# Linux x86_64
+GOOS=linux GOARCH=amd64 make
+
+# Windows x86_64
+GOOS=windows GOARCH=amd64 make
+
+# macOS Apple Silicon
+GOOS=darwin GOARCH=arm64 make
+
+# macOS Intel
+GOOS=darwin GOARCH=amd64 make
+```
+
+PowerShell 示例（与 Bash 等价）：
+
+```powershell
+$env:GOOS = "linux"; $env:GOARCH = "amd64"; make
+```
+
+### Docker 运行adb+ms-robot（适用低性能设备，比如树莓派等小主机）
+
+首先自行构建好对应平台对应架构的`ms-robot.exe`, 上传到设备里
+
+```shell
+ls -lah ms-robot.exe # 文件已经上传好了
+
+docker run -d --name ms-robot --restart always \
+   --privileged --net host \
+   -v /dev/bus/usb:/dev/bus/usb \
+   -v $PWD/.android:/root/.android \
+   -v $PWD:/app -w /app --entrypoint sh \
+   backplane/adb -c "adb server; ./ms-robot.exe"
+```
+
+直接运行，adb签名文件在`$PWD/.android`
+
+### Windows,Mac
+
+先启动一下adb
+
+```shell
+adb server
+```
+
+然后启动ms-robot
+
+```shell
+./ms-robot.exe
+```
 
 ---
 
