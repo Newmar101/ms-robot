@@ -566,7 +566,7 @@ func (s *ScrcpyServer) startServerAndConnect() error {
 			if maxFPS > 0 {
 				serverArgs = append(serverArgs, fmt.Sprintf("max_fps=%d", maxFPS))
 			}
-			serverArgs = append(serverArgs, "video_codec_options=i-frame-interval=1")
+			serverArgs = append(serverArgs, "video_codec_options=i-frame-interval=2")
 		}
 		// 采集时设备继续本地出声（ROUTE_FLAG_LOOP_BACK_RENDER），否则采集时设备会静音
 		if enableAudio {

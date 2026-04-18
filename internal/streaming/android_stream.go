@@ -18,13 +18,26 @@ import (
 	"github.com/pion/webrtc/v3/pkg/media"
 )
 
+const (
+	videoIdleResumeGapUs         int64 = 500_000 // 500ms，与帧前缀 PTS（µs）跳变阈值一致
+	idleResumeKeyframeKickMinGap       = 3 * time.Second
+)
+
+func videoFramePTSUs(frame []byte) uint64 {
+	if len(frame) < 8 {
+		return 0
+	}
+	return uint64(frame[0])<<56 | uint64(frame[1])<<48 | uint64(frame[2])<<40 | uint64(frame[3])<<32 |
+		uint64(frame[4])<<24 | uint64(frame[5])<<16 | uint64(frame[6])<<8 | uint64(frame[7])
+}
+
 // AndroidStreamer Android设备视频流
 type AndroidStreamer struct {
 	device         *device.Device
 	adbDevice      *adb.Device
 	scrcpyServer   *ScrcpyServer
 	scrcpyFromPool bool                                      // true 表示 scrcpy 来自池，关闭投屏时不退出 scrcpy
-	audioTracks    map[string]*webrtc.TrackLocalStaticSample // sessionID -> 音频轨 (Opus)
+	audioPeers     map[string]*audioPeer // sessionID -> 音频分发节点 (独立队列+写协程)
 	// 视频订阅表仅在 orchestrator goroutine 内修改（经 streamCtrl 消息），无 mutex
 	streamCtrl          chan streamOrchestratorMsg // nil 表示未起转发协程
 	orchWG              sync.WaitGroup             // Stop 时等待 orchestrator 退出
@@ -41,6 +54,13 @@ type AndroidStreamer struct {
 	consumerCount       int32            // 仅由 orchestrator 原子写；读协程原子读
 	onDisconnect        func()           // 断开连接回调函数
 	logAudioNoTrackNext time.Time        // 限频：下次打「无音频轨」日志时间
+	coordLastVideoPTSUs   uint64
+	coordLastKeyframeKick time.Time
+}
+
+type audioPeer struct {
+	track *webrtc.TrackLocalStaticSample
+	ch    chan media.Sample
 }
 
 // streamOrchestratorMsg 仅由单条 orchestrator goroutine 在收到后改本地 map（无锁表）
@@ -79,7 +99,7 @@ func NewAndroidStreamer(deviceManager *device.Manager, dev *device.Device, adbDe
 		cancel:         cancel,
 		frameRate:      30,   // 默认30fps
 		useScrcpy:      true, // 优先使用scrcpy
-		audioTracks:    make(map[string]*webrtc.TrackLocalStaticSample),
+		audioPeers:     make(map[string]*audioPeer),
 		readStopChan:   make(chan struct{}),
 		frameChan:      make(chan *VideoFrame, 4), // 缓冲4帧（约133ms@30fps），配合关键帧丢弃策略，降低延迟
 		onDisconnect:   nil,                       // 由 WebRTCManager 设置
@@ -278,23 +298,31 @@ func (s *AndroidStreamer) WriteAudio(data []byte, duration time.Duration) {
 		s.mu.Unlock()
 		return
 	}
-	tracks := make(map[string]*webrtc.TrackLocalStaticSample, len(s.audioTracks))
-	for k, t := range s.audioTracks {
-		tracks[k] = t
+	peers := make(map[string]*audioPeer, len(s.audioPeers))
+	for k, p := range s.audioPeers {
+		peers[k] = p
 	}
-	nTracks := len(tracks)
+	nTracks := len(peers)
 	s.mu.Unlock()
 	if nTracks == 0 {
 		// 限频：仅首次或每 5 秒打一次，避免刷屏
-		if s.logAudioNoTrackNext.Before(time.Now()) {
-			logutil.Debugf("[AndroidStreamer] [音频] 收到设备数据 %d 字节，但当前无音频轨 (audioTracks=0)，前端收不到音频轨", len(data))
+		s.mu.Lock()
+		shouldLog := s.logAudioNoTrackNext.Before(time.Now())
+		if shouldLog {
 			s.logAudioNoTrackNext = time.Now().Add(5 * time.Second)
+		}
+		s.mu.Unlock()
+		if shouldLog {
+			logutil.Debugf("[AndroidStreamer] [音频] 收到设备数据 %d 字节，但当前无音频轨 (audioTracks=0)，前端收不到音频轨", len(data))
 		}
 		return
 	}
-	sample := media.Sample{Data: data, Duration: duration}
-	for _, t := range tracks {
-		_ = t.WriteSample(sample)
+	sample := media.Sample{Data: append([]byte(nil), data...), Duration: duration}
+	for _, p := range peers {
+		select {
+		case p.ch <- sample:
+		default:
+		}
 	}
 }
 
@@ -302,7 +330,21 @@ func (s *AndroidStreamer) WriteAudio(data []byte, duration time.Duration) {
 func (s *AndroidStreamer) AddAudioTrack(sessionID string, track *webrtc.TrackLocalStaticSample) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.audioTracks[sessionID] = track
+	if old, ok := s.audioPeers[sessionID]; ok {
+		close(old.ch)
+	}
+	peer := &audioPeer{
+		track: track,
+		ch:    make(chan media.Sample, 8),
+	}
+	s.audioPeers[sessionID] = peer
+	go func(p *audioPeer) {
+		for smp := range p.ch {
+			if err := p.track.WriteSample(smp); err != nil {
+				return
+			}
+		}
+	}(peer)
 	logutil.Infof("[AndroidStreamer] 已添加音频轨 (sessionID: %s)", sessionID)
 }
 
@@ -310,7 +352,17 @@ func (s *AndroidStreamer) AddAudioTrack(sessionID string, track *webrtc.TrackLoc
 func (s *AndroidStreamer) RemoveAudioTrack(sessionID string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	delete(s.audioTracks, sessionID)
+	if p, ok := s.audioPeers[sessionID]; ok {
+		delete(s.audioPeers, sessionID)
+		close(p.ch)
+	}
+}
+
+func (s *AndroidStreamer) clearAudioPeersLocked() {
+	for sid, p := range s.audioPeers {
+		delete(s.audioPeers, sid)
+		close(p.ch)
+	}
 }
 
 // Stop 停止视频流
@@ -335,7 +387,7 @@ func (s *AndroidStreamer) Stop() {
 		s.scrcpyServer.SetDeviceMessageHandler(nil) // 避免已退役 supervisor 仍往 ctrl 投递设备上行
 	}
 
-	s.audioTracks = make(map[string]*webrtc.TrackLocalStaticSample)
+	s.clearAudioPeersLocked()
 
 	hadVideoPipeline := s.reading
 	// 先停读协程，使其 defer 关闭 frameChan；orchestrator 在 frameChan 关闭后关订阅并 orchWG.Done
@@ -563,17 +615,35 @@ func (s *AndroidStreamer) startVideoPipelineWithGate(videoDemuxGate <-chan struc
 					continue coordLoop
 				}
 
-				if isKeyFrame {
-					droppedCount := 0
-					keptFrames := make([]*VideoFrame, 0, 8)
+				if !isConfig {
+					pts := videoFramePTSUs(frame)
+					if pts > 0 && s.coordLastVideoPTSUs > 0 {
+						delta := int64(pts) - int64(s.coordLastVideoPTSUs)
+						if delta > videoIdleResumeGapUs && time.Since(s.coordLastKeyframeKick) >= idleResumeKeyframeKickMinGap {
+							s.coordLastKeyframeKick = time.Now()
+							if srv := s.scrcpyServer; srv != nil && srv.IsRunning() {
+								udid := s.device.UDID
+								go func() {
+									if err := srv.RequestKeyFrame(); err != nil {
+										logutil.Debugf("[AndroidStreamer] 设备 %s: 静止恢复后请求关键帧失败: %v", udid, err)
+									} else {
+										logutil.Debugf("[AndroidStreamer] 设备 %s: 静止恢复后已请求关键帧 (PTS 间隔 %dµs)", udid, delta)
+									}
+								}()
+							}
+						}
+					}
+					s.coordLastVideoPTSUs = pts
+				}
 
+				if isKeyFrame {
+					// 新关键帧到来时清空历史积压，仅保留最新一份配置帧，避免旧帧拖延恢复时延。
+					var latestConfig *VideoFrame
 					for {
 						select {
 						case oldFrame := <-s.frameChan:
-							if oldFrame.IsKeyFrame || oldFrame.IsConfig {
-								keptFrames = append(keptFrames, oldFrame)
-							} else {
-								droppedCount++
+							if oldFrame != nil && oldFrame.IsConfig {
+								latestConfig = oldFrame
 							}
 						default:
 							goto sendKeyFrame
@@ -581,18 +651,12 @@ func (s *AndroidStreamer) startVideoPipelineWithGate(videoDemuxGate <-chan struc
 					}
 
 				sendKeyFrame:
-					if len(keptFrames) > 2 {
-						keptFrames = keptFrames[len(keptFrames)-2:]
-					}
-					for _, keptFrame := range keptFrames {
+					if latestConfig != nil {
 						select {
-						case s.frameChan <- keptFrame:
+						case s.frameChan <- latestConfig:
 						default:
 						}
 					}
-
-					_ = droppedCount
-
 					s.frameChan <- &VideoFrame{
 						Data:       frame,
 						IsConfig:   isConfig,

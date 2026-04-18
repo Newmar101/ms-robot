@@ -1579,7 +1579,7 @@ function createDeviceCard(device) {
         <button class="control-btn-icon" data-action="volume-up" title="音量+" disabled>🔊</button>
         <button class="control-btn-icon" data-action="volume-down" title="音量-" disabled>🔉</button>
         <button class="control-btn-icon" data-action="mute" title="静音" disabled>🔇</button>
-        <button class="control-btn-icon audio-toggle-btn audio-on" data-action="audio-toggle" data-audio-enabled="1" title="网页播放设备声音（需先投屏）" disabled>🎧</button>
+        <button class="control-btn-icon audio-toggle-btn" data-action="audio-toggle" data-audio-enabled="0" title="网页播放设备声音（需先投屏）" disabled>👂</button>
         <button class="control-btn-icon" data-action="rotate-view" data-device-id="${escapeHtml(deviceId)}" title="旋转视图" disabled>🔄</button>
     `;
     
@@ -2967,7 +2967,7 @@ function handleIncomingVideoTrack({
 
         video.srcObject = combinedStream;
         conn.videoStreamSet = true;
-        syncAudioToggleButtons(deviceUDID, false); // 与保持 muted 一致，避免按钮显示已开但网页无声
+        syncAudioToggleButtons(deviceUDID, !video.muted); // 按真实静音状态同步按钮，避免图标与实际出声不一致
         const audioTracksInStream = combinedStream.getAudioTracks().length;
         console.log(`设备 ${deviceUDID}: video.srcObject 已设置, 音频轨数=${audioTracksInStream}, video.muted=${video.muted}`);
 
@@ -3004,7 +3004,7 @@ async function initWebRTCStream(deviceUDID, container) {
     const video = document.createElement('video');
     video.autoplay = true;
     video.playsInline = true; // 移动端内联播放
-    video.muted = true; // 必须静音才能自动播放
+    // video.muted = true; // iOS 实测：先注掉默认静音，验证是否可直接有声播放
     // iOS Safari需要设置webkit-playsinline属性（旧版Safari）
     video.setAttribute('webkit-playsinline', 'true');
     video.setAttribute('playsinline', 'true');
@@ -6297,7 +6297,7 @@ function enterFullscreenMode(deviceId) {
         const fullscreenVideo = document.createElement('video');
         fullscreenVideo.autoplay = true;
         fullscreenVideo.playsInline = true;
-        fullscreenVideo.muted = true;
+        fullscreenVideo.muted = !!video.muted; // 全屏跟随当前视频静音状态，保持与按钮一致
         fullscreenVideo.setAttribute('webkit-playsinline', 'true');
         fullscreenVideo.setAttribute('playsinline', 'true');
         fullscreenVideo.style.width = 'auto';
@@ -6474,7 +6474,7 @@ function updateFullscreenVideo(deviceUDID, videoElement) {
     const fullscreenVideo = document.createElement('video');
     fullscreenVideo.autoplay = true;
     fullscreenVideo.playsInline = true;
-    fullscreenVideo.muted = true;
+    fullscreenVideo.muted = !!videoElement.muted; // 全屏跟随当前视频静音状态，保持与按钮一致
     fullscreenVideo.setAttribute('webkit-playsinline', 'true');
     fullscreenVideo.setAttribute('playsinline', 'true');
     fullscreenVideo.style.width = 'auto';
