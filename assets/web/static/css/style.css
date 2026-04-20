@@ -2160,7 +2160,305 @@ h2 {
     height: 24px;
 }
 
+/* Final control panel overrides:
+   use one consistent rule set for card sidebars, keep fullscreen controls
+   separate, and avoid opacity/filter on the whole panel or whole button. */
+.device-card-wrapper {
+    --device-side-panel-width: 46px;
+}
+
+.device-card-wrapper > .device-control-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: auto;
+    width: var(--device-side-panel-width);
+    max-width: var(--device-side-panel-width);
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    background: rgba(70, 70, 70, 0.92);
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    opacity: 1;
+    filter: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-gutter: stable;
+    box-sizing: border-box;
+}
+
+.devices-grid .device-card-wrapper > .device-control-panel,
+.devices-grid .device-card-wrapper.landscape > .device-control-panel {
+    width: var(--device-side-panel-width);
+    max-width: var(--device-side-panel-width);
+    align-self: auto;
+    padding: 0;
+}
+
+.device-card-wrapper > .device-control-panel::before,
+.device-card-wrapper > .device-control-panel::after {
+    content: "";
+    flex: 1 1 0;
+    min-height: 0;
+    min-width: 0;
+    pointer-events: none;
+}
+
+.device-card-wrapper > .device-control-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.device-card-wrapper > .device-control-panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+}
+
+.device-card-wrapper > .device-control-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.device-card-wrapper > .device-control-panel > .control-btn-icon {
+    width: 100% !important;
+    max-width: 100%;
+    height: 38px;
+    min-width: 0;
+    min-height: 38px;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: stretch;
+    flex: 0 0 38px;
+    box-sizing: border-box;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+    opacity: 1;
+    filter: none;
+    color: rgba(255, 255, 255, 0.96);
+}
+
+.device-card-wrapper > .device-control-panel > .control-btn-icon:not(:disabled) {
+    background: rgba(28, 28, 28, 0.72);
+    cursor: pointer;
+}
+
+.device-card-wrapper > .device-control-panel > .control-btn-icon:not(:disabled):hover {
+    background: rgba(255, 255, 255, 0.14);
+    transform: none;
+}
+
+.device-card-wrapper > .device-control-panel > .control-btn-icon:not(:disabled):active {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(0.97);
+}
+
+.device-card-wrapper > .device-control-panel > .control-btn-icon:disabled {
+    background: rgba(90, 90, 90, 0.45);
+    color: rgba(255, 255, 255, 0.72);
+    cursor: not-allowed;
+    transform: none;
+}
+
+.device-card-wrapper > .device-control-panel > .control-btn-icon:disabled:hover,
+.device-card-wrapper > .device-control-panel > .control-btn-icon:disabled:active {
+    background: rgba(90, 90, 90, 0.45);
+    transform: none;
+}
+
+.device-card-wrapper.landscape > .device-control-panel {
+    gap: 0;
+    background: rgba(70, 70, 70, 0.92);
+}
+
+.device-card-wrapper.landscape > .device-control-panel > .control-btn-icon {
+    width: 100% !important;
+    border-right: none;
+}
+
+.focus-header {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.focus-header h3 {
+    flex: 0 1 auto;
+    min-width: 120px;
+}
+
+.focus-header .device-control-panel {
+    flex: 1 1 auto;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 3px;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 1px;
+    margin-left: 2px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    opacity: 1;
+    filter: none;
+}
+
+.focus-header .device-control-panel::-webkit-scrollbar {
+    height: 6px;
+}
+
+.focus-header .device-control-panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+}
+
+.focus-header .device-control-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.focus-header .device-control-panel .control-btn-icon,
+.focus-controls .control-btn-icon {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    opacity: 1;
+    filter: none;
+}
+
+.focus-header .device-control-panel .control-btn-icon {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    margin: 0;
+    padding: 0;
+    font-size: 15px;
+    border-radius: 6px;
+}
+
+.focus-header .device-control-panel .control-btn-icon:not(:disabled),
+.focus-controls .control-btn-icon:not(:disabled) {
+    color: rgba(255, 255, 255, 0.96);
+    cursor: pointer;
+}
+
+.focus-header .device-control-panel .control-btn-icon:disabled,
+.focus-controls .control-btn-icon:disabled {
+    color: rgba(255, 255, 255, 0.62);
+    cursor: not-allowed;
+}
+
+.focus-header .device-control-panel .control-btn-icon:not(:disabled):hover,
+.focus-controls .control-btn-icon:not(:disabled):hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: none;
+}
+
+.focus-header .device-control-panel .control-btn-icon:not(:disabled):active,
+.focus-controls .control-btn-icon:not(:disabled):active {
+    background: rgba(255, 255, 255, 0.14);
+    transform: scale(0.96);
+}
+
+.focus-header .device-control-panel .control-btn-icon:disabled:hover,
+.focus-header .device-control-panel .control-btn-icon:disabled:active,
+.focus-controls .control-btn-icon:disabled:hover,
+.focus-controls .control-btn-icon:disabled:active {
+    background: transparent;
+    transform: none;
+}
+
+#exit-focus-mode {
+    margin-left: auto;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    font-size: 16px;
+    background: rgba(231, 76, 60, 0.88);
+    border: none;
+    box-shadow: none;
+}
+
+#exit-focus-mode:hover {
+    background: rgba(231, 76, 60, 1);
+}
+
+#exit-focus-mode:active {
+    transform: scale(0.96);
+}
+
 /* 旧的样式已移除，现在使用 .panels-container 中的统一样式 */
+
+@media (min-width: 769px) {
+    .device-card-wrapper:not(.landscape) {
+        --device-side-panel-width: 54px;
+    }
+
+    .device-card-wrapper:not(.landscape) > .device-control-panel,
+    .devices-grid .device-card-wrapper:not(.landscape) > .device-control-panel {
+        width: var(--device-side-panel-width);
+        max-width: var(--device-side-panel-width);
+        padding: 0;
+        gap: 1px;
+        background: rgba(62, 62, 62, 0.96);
+    }
+
+    .device-card-wrapper:not(.landscape) > .device-control-panel > .control-btn-icon,
+    .devices-grid .device-card-wrapper:not(.landscape) > .device-control-panel > .control-btn-icon {
+        height: 42px;
+        min-height: 42px;
+        flex: 0 0 42px;
+        font-size: 17px;
+    }
+
+    .device-card-wrapper:not(.landscape) > .device-control-panel > .control-btn-icon:not(:disabled),
+    .devices-grid .device-card-wrapper:not(.landscape) > .device-control-panel > .control-btn-icon:not(:disabled) {
+        background: rgba(22, 22, 22, 0.78);
+    }
+
+    .device-card-wrapper:not(.landscape) > .device-control-panel > .control-btn-icon:not(:disabled):hover,
+    .devices-grid .device-card-wrapper:not(.landscape) > .device-control-panel > .control-btn-icon:not(:disabled):hover {
+        background: rgba(255, 255, 255, 0.16);
+    }
+
+    .device-card-wrapper:not(.landscape) > .device-control-panel > .control-btn-icon:not(:disabled):active,
+    .devices-grid .device-card-wrapper:not(.landscape) > .device-control-panel > .control-btn-icon:not(:disabled):active {
+        background: rgba(255, 255, 255, 0.22);
+    }
+
+    .device-card-wrapper:not(.landscape) > .device-control-panel > .control-btn-icon:disabled,
+    .devices-grid .device-card-wrapper:not(.landscape) > .device-control-panel > .control-btn-icon:disabled,
+    .device-card-wrapper:not(.landscape) > .device-control-panel > .control-btn-icon:disabled:hover,
+    .devices-grid .device-card-wrapper:not(.landscape) > .device-control-panel > .control-btn-icon:disabled:hover,
+    .device-card-wrapper:not(.landscape) > .device-control-panel > .control-btn-icon:disabled:active,
+    .devices-grid .device-card-wrapper:not(.landscape) > .device-control-panel > .control-btn-icon:disabled:active {
+        background: rgba(94, 94, 94, 0.54);
+    }
+}
 
 .file-upload-area {
     border: 2px dashed #3498db;
