@@ -82,15 +82,6 @@ h2 {
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.device-controls-header-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 15px;
-    padding: 15px 12px;
-}
-
 .device-controls-header h2 {
     margin: 0;
     color: #2c3e50;
@@ -390,10 +381,6 @@ h2 {
 }
 
 @media (max-width: 768px) {
-    .devices-grid {
-        grid-template-columns: 1fr;
-    }
-
     .device-video-wrapper {
         max-height: 60vh; /* 移动端更小的高度 */
     }
@@ -401,6 +388,7 @@ h2 {
 
 /* 设备卡片外层容器 */
 .device-card-wrapper {
+    --device-side-panel-width: 38px;
     display: flex;
     flex-direction: row; /* 默认横向布局：卡片在左，按钮在右 */
     align-items: center;
@@ -435,7 +423,6 @@ h2 {
     justify-content: center;
     font-size: 16px;
     cursor: pointer;
-    z-index: 10;
     font-weight: bold;
     z-index: 100;
     box-shadow: 0 2px 8px rgba(46, 204, 113, 0.6);
@@ -483,16 +470,6 @@ h2 {
     /* 宽高互换通过 aspect-ratio 和容器尺寸来实现 */
 }
 
-/* 横向时，控制面板变为下方横向按钮栏 */
-.device-card-wrapper.landscape .device-control-panel {
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    height: auto;
-    padding: 8px 0;
-}
-
 /* 设备视频卡片 */
 .device-video-card {
     background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
@@ -504,6 +481,9 @@ h2 {
     overflow: hidden;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     flex: 1; /* 占据剩余空间 */
+    max-height: calc(70vh + 100px); /* 卡片高度 = 视频高度 + 头部高度 */
+    display: flex;
+    flex-direction: column;
 }
 
 .device-video-card:hover {
@@ -654,13 +634,6 @@ h2 {
     image-rendering: crisp-edges;
 }
 
-/* 确保视频容器不会超出视口 */
-.device-video-card {
-    max-height: calc(70vh + 100px); /* 卡片高度 = 视频高度 + 头部高度 */
-    display: flex;
-    flex-direction: column;
-}
-
 .device-video-wrapper img {
     width: 100%;
     height: 100%;
@@ -731,84 +704,11 @@ h2 {
     background: #000;
     z-index: 2000;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .focus-mode.active {
     display: flex;
-}
-
-.focus-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 25px;
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    border-bottom: 1px solid #444;
-    backdrop-filter: blur(10px);
-    z-index: 3001;
-    position: relative;
-}
-
-.focus-header h3 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-}
-
-/* 全屏顶栏内复用的侧栏：横向排列，内部居中 */
-.focus-header .device-control-panel {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 4px;
-    padding: 0 12px;
-    margin: 0;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    flex: 1;
-    min-width: 0;
-}
-.focus-header .device-control-panel .control-btn-icon {
-    flex: 0 0 auto;
-    min-width: 36px;
-    width: 36px;
-    height: 36px;
-    font-size: 16px;
-    border: none;
-    border-radius: 6px;
-}
-
-#exit-focus-mode {
-    background: #e74c3c;
-    padding: 8px 12px;
-    font-size: 18px;
-    border: none;
-    color: white;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: all 0.2s;
-    z-index: 3002;
-    position: relative;
-    line-height: 1;
-    min-width: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-#exit-focus-mode:hover {
-    background: #c0392b;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 6px rgba(231, 76, 60, 0.4);
-}
-
-#exit-focus-mode:active {
-    transform: translateY(0);
 }
 
 .focus-video-container {
@@ -828,7 +728,7 @@ h2 {
     position: relative;
     background: #000;
     overflow: hidden; /* 不允许滚动 */
-    padding: 20px;
+    padding: 12px 16px;
     box-sizing: border-box;
     min-height: 0;
     width: 100%;
@@ -851,25 +751,6 @@ h2 {
     max-height: 100%; /* 最大高度不超过容器高度 */
     object-fit: contain; /* 保持比例，完整显示 */
     display: block;
-}
-
-.focus-controls {
-    padding: 0;
-    background: rgba(0, 0, 0, 0.9);
-    border-top: 1px solid #444;
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    gap: 0;
-    backdrop-filter: blur(10px);
-    flex-shrink: 0;
-    max-height: 200px;
-    overflow: hidden;
-}
-.focus-controls .device-control-panel-bottom {
-    margin: 0;
-    min-width: 180px;
 }
 
 .focus-controls .btn {
@@ -942,21 +823,7 @@ h2 {
     transform: translateY(0);
 }
 
-.device-card {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    padding: 20px;
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.device-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-/* 设备卡片（仅信息，无视频） */
+.device-card,
 .device-info-card {
     background: #f8f9fa;
     border: 1px solid #dee2e6;
@@ -966,6 +833,7 @@ h2 {
     transition: transform 0.2s, box-shadow 0.2s;
 }
 
+.device-card:hover,
 .device-info-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
@@ -1310,12 +1178,6 @@ h2 {
 }
 
 /* 文件管理样式 */
-.header-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
 .file-manager-btn {
     display: flex;
     align-items: center;
@@ -1357,13 +1219,6 @@ h2 {
     gap: 8px;
 }
 
-.devices-container-bar {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 6px;
-    flex-shrink: 0;
-}
 /* 状态显示在左边，确保在所有模式下都左对齐（距离 bar 左边缘 12px，与 section-title 的 padding-left 一致） */
 .device-status-displays-bar {
     order: -2; /* 放在最前面 */
@@ -1434,6 +1289,7 @@ h2 {
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
+    white-space: nowrap;
 }
 .devices-bar-btn:hover {
     background: #ecf0f1;
@@ -1471,10 +1327,6 @@ h2 {
     top: 0;
     z-index: 19;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-}
-/* section-select-all 及右边的控件（refresh、disconnect）居右对齐 */
-.devices-section-title .section-select-all {
-    margin-left: auto;
 }
 .devices-section-arrow {
     flex-shrink: 0;
@@ -1661,6 +1513,8 @@ h2 {
 
 /* 2) Header title and primary action row */
 .device-controls-header-top {
+    display: flex;
+    padding: 15px 12px;
     flex-direction: column;
     flex-wrap: nowrap;
     align-items: stretch;
@@ -1734,8 +1588,7 @@ h2 {
 }
 
 .batch-operations-text,
-.file-manager-text,
-.devices-bar-btn {
+.file-manager-text {
     white-space: nowrap;
 }
 
@@ -1758,6 +1611,7 @@ h2 {
 
 .devices-container-bar {
     min-height: 36px;
+    flex-shrink: 0;
 }
 
 .devices-section-title {
@@ -1785,10 +1639,8 @@ h2 {
 .devices-section-title-text,
 .section-select-all,
 .section-select-all-text,
-.devices-bar-btn,
 .devices-section-refresh,
-.devices-section-disconnect,
-.endpoint-info-btn {
+.devices-section-disconnect {
     white-space: nowrap;
 }
 
@@ -1815,7 +1667,6 @@ h2 {
     padding: 0;
 }
 
-.devices-container-bar .section-select-all,
 .section-select-all {
     gap: 6px;
     min-height: 32px;
@@ -1833,7 +1684,7 @@ h2 {
 
 .devices-section-title .endpoint-info-btn {
     margin-left: auto;
-    margin-right: 0;
+    margin-right: 4px;
 }
 
 .devices-section-title .section-select-all {
@@ -1842,8 +1693,7 @@ h2 {
 
 .section-select-all,
 .devices-section-refresh,
-.devices-section-disconnect,
-.endpoint-info-btn {
+.devices-section-disconnect {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1863,25 +1713,22 @@ h2 {
     font-size: 14px;
 }
 
-.endpoint-info-btn {
-    width: 24px;
-    min-width: 24px;
-    height: 24px;
-}
-
 /* 4) Fullscreen and maximized control chrome */
-.focus-mode {
-    overflow: hidden;
-}
-
 .focus-header {
     display: flex;
     flex-wrap: nowrap;
+    justify-content: space-between;
     align-items: center;
     gap: 6px;
     min-width: 0;
     overflow: hidden;
     padding: 10px 14px;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    border-bottom: 1px solid #444;
+    backdrop-filter: blur(10px);
+    z-index: 3001;
+    position: relative;
 }
 
 .focus-header h3 {
@@ -1889,6 +1736,8 @@ h2 {
     min-width: 120px;
     margin: 0;
     font-size: 16px;
+    font-weight: 600;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1897,8 +1746,9 @@ h2 {
 .focus-header .device-control-panel {
     flex: 1 1 auto;
     display: flex;
+    flex-direction: row;
     flex-wrap: nowrap;
-    justify-content: flex-start;
+    justify-content: center;
     align-items: center;
     gap: 3px;
     min-width: 0;
@@ -1978,13 +1828,13 @@ h2 {
     transform: none;
 }
 
-.focus-video-wrapper {
-    padding: 12px 16px;
-    align-items: center;
-    justify-content: center;
-}
-
 .focus-controls {
+    display: flex;
+    flex-direction: row;
+    background: rgba(0, 0, 0, 0.9);
+    border-top: 1px solid #444;
+    backdrop-filter: blur(10px);
+    flex-shrink: 0;
     padding: 8px 12px 10px;
     gap: 8px;
     flex-wrap: wrap;
@@ -2034,11 +1884,25 @@ h2 {
     border-radius: 8px;
     box-shadow: none;
     flex: 0 0 auto;
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s;
+    z-index: 3002;
+    position: relative;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .focus-close-btn:hover,
 #exit-focus-mode:hover {
     background: rgba(231, 76, 60, 1);
+}
+
+#exit-focus-mode:hover {
+    box-shadow: 0 2px 6px rgba(231, 76, 60, 0.4);
 }
 
 .focus-close-btn:active,
@@ -2047,10 +1911,6 @@ h2 {
 }
 
 /* 5) Final right-side control rail */
-.device-card-wrapper {
-    --device-side-panel-width: 38px;
-}
-
 .device-card-wrapper > .device-control-panel {
     position: absolute;
     top: 0;
@@ -2067,11 +1927,11 @@ h2 {
     align-items: stretch;
     gap: 0;
     padding: 0;
-    background: transparent;
+    background: rgba(0, 0, 0, 0.6);
     border: none;
     border-radius: 0;
     box-shadow: none;
-    backdrop-filter: none;
+    backdrop-filter: blur(10px);
     opacity: 1;
     filter: none;
     overflow-y: auto;
@@ -2357,12 +2217,6 @@ h2 {
     cursor: not-allowed;
 }
 
-.file-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
 .file-item {
     display: flex;
     align-items: center;
@@ -2403,8 +2257,9 @@ h2 {
 
 .file-item-name {
     font-weight: 500;
-    color: #2c3e50;
+    color: #495057;
     font-size: 14px;
+    margin-bottom: 4px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2413,7 +2268,7 @@ h2 {
 
 .file-item-meta {
     font-size: 12px;
-    color: #7f8c8d;
+    color: #6c757d;
     margin-top: 4px;
     white-space: nowrap;
     overflow: hidden;
@@ -2512,8 +2367,6 @@ h2 {
 .endpoint-info-btn:hover { opacity: 1; background: rgba(52, 152, 219, 0.15); }
 .endpoints-list li .endpoint-info-btn { margin-right: 6px; }
 .endpoints-list li .endpoint-item-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.devices-section-title .endpoint-info-btn { margin-right: 4px; }
-
 .device-select-header .select-all-checkbox {
     margin-right: 8px;
     vertical-align: middle;
@@ -2684,13 +2537,7 @@ h2 {
     border: 1px solid #dee2e6;
 }
 
-.file-item-name {
-    font-weight: 500;
-    color: #495057;
-    margin-bottom: 4px;
-}
-
-.file-item-meta, .device-item-info > div:last-child {
+.device-item-info > div:last-child {
     font-size: 12px;
     color: #6c757d;
 }
@@ -2786,7 +2633,7 @@ h2 {
     color: #2c3e50;
 }
 
-.close-btn {
+.file-manager-header .close-btn {
     width: 30px;
     height: 30px;
     border: none;
@@ -2802,7 +2649,7 @@ h2 {
     transition: all 0.2s;
 }
 
-.close-btn:hover {
+.file-manager-header .close-btn:hover {
     background: #c0392b;
     transform: scale(1.1);
 }

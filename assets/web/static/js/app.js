@@ -4287,8 +4287,8 @@ function applyControlButtonsToPanel(panel, enabled) {
     buttons.forEach(btn => {
         if (enabled) {
             btn.removeAttribute('disabled');
-            btn.style.opacity = '1';
-            btn.style.cursor = 'pointer';
+            btn.style.removeProperty('opacity');
+            btn.style.removeProperty('cursor');
             const originalTitle = btn.getAttribute('data-original-title') || btn.title;
             if (originalTitle && !originalTitle.includes('（需要连接）')) {
                 btn.title = originalTitle;
@@ -4297,8 +4297,8 @@ function applyControlButtonsToPanel(panel, enabled) {
             }
         } else {
             btn.setAttribute('disabled', 'disabled');
-            btn.style.opacity = '0.5';
-            btn.style.cursor = 'not-allowed';
+            btn.style.removeProperty('opacity');
+            btn.style.removeProperty('cursor');
             if (!btn.getAttribute('data-original-title')) {
                 btn.setAttribute('data-original-title', btn.title || '');
             }
@@ -5309,8 +5309,8 @@ function setupControlButtons(deviceId) {
             }
             if (btn.classList.contains('disconnect-btn')) {
                 btn.removeAttribute('disabled');
-                btn.style.opacity = '1';
-                btn.style.cursor = 'pointer';
+                btn.style.removeProperty('opacity');
+                btn.style.removeProperty('cursor');
                 btn.onclick = (e) => {
                     e.stopPropagation();
                     const apiUdid = getApiUdidFromButton(e.currentTarget);
